@@ -1,6 +1,6 @@
 # go-std-http-example
 
-演示go标准库中的[net/http]([http package - net/http - Go Packages](https://pkg.go.dev/net/http@go1.20.2))怎样使用，示例的接口包括
+演示go标准库中的[net/http](https://pkg.go.dev/net/http@go1.20.2)怎样使用，示例的接口包括
 
 ## HTTP Methods
 
