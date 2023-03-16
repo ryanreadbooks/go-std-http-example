@@ -1,0 +1,11 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<config>
+  <name>GoStd</name>
+  <version>1.0.0</version>
+  <author>ryanreadbooks</author>
+  <time>
+    <year>2023</year>
+    <month>3</month>
+    <day>16</day>
+  </time>
+</config>
