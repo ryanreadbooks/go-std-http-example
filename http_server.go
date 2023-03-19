@@ -13,8 +13,19 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
+
+func fetchNowGMT() string {
+	nowUTC := time.Now().UTC()
+	t := nowUTC.Format(time.RFC1123)
+	return strings.Replace(t, "UTC", "GMT", 1)
+}
+
+func addDateHeader(w http.ResponseWriter) {
+	w.Header().Set("Date", fetchNowGMT())
+}
 
 // get请求的响应内容
 type GetResponse struct {
@@ -80,11 +91,13 @@ func ExtractForm(form url.Values) map[string]string {
 }
 
 func MakeServerInternalError(writer http.ResponseWriter) {
+	addDateHeader(writer)
 	writer.WriteHeader(http.StatusInternalServerError)
 	writer.Write([]byte("Server Internal Error"))
 }
 
 func MethodNotAllowed(writer http.ResponseWriter) {
+	addDateHeader(writer)
 	writer.WriteHeader(http.StatusMethodNotAllowed)
 	writer.Write([]byte("<h1>Method Not Allowed</h1>"))
 }
@@ -100,6 +113,10 @@ func ValidateMethod(writer http.ResponseWriter, req *http.Request, allow string)
 // /get请求的处理
 type GetHandler struct{}
 
+func addHeaderServer(writer http.ResponseWriter) {
+	writer.Header().Add("server", "GoStandardHTTPServer")
+}
+
 func GenerateJsonResponse(writer http.ResponseWriter, req *http.Request) ([]byte, error) {
 	content, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -107,7 +124,7 @@ func GenerateJsonResponse(writer http.ResponseWriter, req *http.Request) ([]byte
 			fmt.Printf("content= %s\n", content)
 		}
 	}
-	writer.Header().Add("server", "GoStandardHTTPServer")
+	addDateHeader(writer)
 	// 获取一些信息
 	r := GetResponse{
 		Args:    ExtractArgs(req.URL.Query()),
@@ -119,6 +136,7 @@ func GenerateJsonResponse(writer http.ResponseWriter, req *http.Request) ([]byte
 }
 
 func (h *GetHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	addHeaderServer(writer)
 	defer req.Body.Close()
 	if !ValidateMethod(writer, req, http.MethodGet) {
 		return
@@ -137,6 +155,7 @@ func (h *GetHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 type PostHandler struct{}
 
 func (p *PostHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	addHeaderServer(writer)
 	defer req.Body.Close()
 	// 如果这里并不是请求进来的并不是post请求，则需要返回错误405
 	if !ValidateMethod(writer, req, http.MethodPost) {
@@ -164,6 +183,7 @@ func (p *PostHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 		return
 	} else {
 		// marshal ok
+		addDateHeader(writer)
 		writer.Header().Set("Content-Type", "application/json")
 		writer.Write(json_bytes)
 	}
@@ -172,6 +192,7 @@ func (p *PostHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 type GetHeadersHandler struct{}
 
 func (g *GetHeadersHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	addHeaderServer(writer)
 	defer req.Body.Close()
 	if !ValidateMethod(writer, req, http.MethodGet) {
 		return
@@ -182,6 +203,7 @@ func (g *GetHeadersHandler) ServeHTTP(writer http.ResponseWriter, req *http.Requ
 		MakeServerInternalError(writer)
 		return
 	}
+	addDateHeader(writer)
 	writer.Header().Set("Content-Type", "application/json")
 	writer.Write(json_bytes)
 }
@@ -203,6 +225,7 @@ func ConstructCookieToJson(cookies []*http.Cookie) []byte {
 }
 
 func (g *GetCookiesHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
+	addHeaderServer(writer)
 	defer req.Body.Close()
 	if !ValidateMethod(writer, req, http.MethodGet) {
 		return
@@ -214,6 +237,7 @@ func (g *GetCookiesHandler) ServeHTTP(writer http.ResponseWriter, req *http.Requ
 		MakeServerInternalError(writer)
 		return
 	}
+	addDateHeader(writer)
 	writer.Header().Set("Content-Type", "application/json")
 	writer.Write(content)
 }
@@ -241,6 +265,7 @@ func http_server() {
 	// HTTP request inspect
 	mux.Handle("/headers", &GetHeadersHandler{})
 	mux.HandleFunc("/user-agent", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -254,6 +279,7 @@ func http_server() {
 	// Dynamic data
 	// 解码base64的内容
 	mux.HandleFunc("/base64/", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -268,6 +294,7 @@ func http_server() {
 			return
 		}
 		// decode ok
+		addDateHeader(w)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(dst)
 	})
@@ -277,6 +304,7 @@ func http_server() {
 	mux.Handle("/cookies", &GetCookiesHandler{})
 	// /cookies/set?xx=yy&xx=yy为设置cookie的接口方式
 	mux.HandleFunc("/cookies/set", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -285,6 +313,7 @@ func http_server() {
 		var queries url.Values = r.URL.Query()
 		if len(queries) == 0 {
 			// 请求格式不符合要求，返回错误
+			addDateHeader(w)
 			w.Write([]byte("<h1>Invalid syntax when set cookies</h1>"))
 			w.Write([]byte("<h1>syntax is like: /cookies/set?key1=value1&key2=value2</h1>"))
 			return
@@ -299,13 +328,14 @@ func http_server() {
 		}
 
 		// 重定向到/cookies
+		addDateHeader(w)
 		w.Header().Set("Location", "/cookies")
 		w.WriteHeader(http.StatusFound)
 	})
 
 	// 删除一个cookie的接口
 	mux.HandleFunc("/cookies/delete", func(w http.ResponseWriter, r *http.Request) {
-
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -314,6 +344,7 @@ func http_server() {
 		queries := r.URL.Query()
 		if len(queries) == 0 {
 			// 请求格式不符合要求，返回错误
+			addDateHeader(w)
 			w.Write([]byte("<h1>Invalid syntax when set cookies</h1>"))
 			w.Write([]byte("<h1>syntax is like: /cookies/set?key1=value1&key2=value2</h1>"))
 			return
@@ -323,6 +354,7 @@ func http_server() {
 			http.SetCookie(w, &http.Cookie{Name: k, MaxAge: -1})
 		}
 		// 重定向到/cookies
+		addDateHeader(w)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Location", "/cookies")
 		w.WriteHeader(http.StatusFound)
@@ -339,6 +371,7 @@ func http_server() {
 
 	// images
 	mux.HandleFunc("/image/jpeg", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -349,6 +382,7 @@ func http_server() {
 			return
 		}
 		// 将img_file的内容复制到http.ResponseWriter中
+		addDateHeader(w)
 		w.Header().Set("Content-Type", "image/jpeg")
 		_, err := io.Copy(w, img_file)
 		img_file.Seek(0, io.SeekStart) // 文件指针回到文件开头的位置
@@ -356,8 +390,10 @@ func http_server() {
 			fmt.Printf("err when io.Copy: %v\n", err)
 		}
 	})
+
 	// /image/png接口，返回一张png格式的图片
 	mux.HandleFunc("/image/png", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -367,6 +403,7 @@ func http_server() {
 			MakeServerInternalError(w)
 			return
 		}
+		addDateHeader(w)
 		w.Header().Set("Content-Type", "image/png")
 		_, err := io.Copy(w, img_file)
 		img_file.Seek(0, io.SeekStart) // 文件指针回到文件开头的位置
@@ -379,6 +416,7 @@ func http_server() {
 	// 重定向接口的处理
 	// 接口格式 //absolute-redirect?n=2 其中查询参数n表示重定向的次数
 	mux.HandleFunc("/absolute-redirect", func(w http.ResponseWriter, req *http.Request) {
+		addHeaderServer(w)
 		defer req.Body.Close()
 		if !ValidateMethod(w, req, http.MethodGet) {
 			return
@@ -386,6 +424,7 @@ func http_server() {
 		num, err := strconv.Atoi(req.URL.Query().Get("n"))
 		if err != nil || num < 0 {
 			// 无法将转换为数字，直接可以返回错误
+			addDateHeader(w)
 			w.Write([]byte("<h1>接口参数非法</h1><p>正确格式为: /absolute-redirect?n=xxx, xxxxxx必须为大于等于零的数字</p>"))
 			return
 		}
@@ -397,10 +436,12 @@ func http_server() {
 			w.Header().Add("Location", re_loc)
 			w.WriteHeader(http.StatusFound)
 		}
+		addDateHeader(w)
 	})
 
 	// /echo/xxx
 	mux.HandleFunc("/echo/", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -418,11 +459,13 @@ func http_server() {
 		}
 		json_bytes, _ := json.MarshalIndent(map[string]string{"echoing": data}, " ", "  ")
 		w.Header().Set("Content-Type", "application/json")
+		addDateHeader(w)
 		w.Write(json_bytes)
 	})
 
 	// 响应值的格式：压缩格式的接口
 	mux.HandleFunc("/deflate", func(w http.ResponseWriter, req *http.Request) {
+		addHeaderServer(w)
 		defer req.Body.Close()
 		if !ValidateMethod(w, req, http.MethodGet) {
 			return
@@ -455,6 +498,7 @@ func http_server() {
 	})
 
 	mux.HandleFunc("/gzip", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		defer r.Body.Close()
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
@@ -480,6 +524,7 @@ func http_server() {
 
 	// 响应简单的html文件
 	mux.HandleFunc("/html", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
 		}
@@ -489,6 +534,7 @@ func http_server() {
 			return
 		}
 		// 将img_file的内容复制到http.ResponseWriter中
+		addDateHeader(w)
 		w.Header().Set("Content-Type", "text/html")
 		_, err := io.Copy(w, img_file)
 		img_file.Seek(0, io.SeekStart) // 文件指针回到文件开头的位置
@@ -496,9 +542,10 @@ func http_server() {
 			fmt.Printf("err when io.Copy: %v\n", err)
 		}
 	})
-	// 响应简单的xml文件
 
+	// 响应简单的xml文件
 	mux.HandleFunc("/xml", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
 		if !ValidateMethod(w, r, http.MethodGet) {
 			return
 		}
@@ -509,10 +556,105 @@ func http_server() {
 		}
 		// 将img_file的内容复制到http.ResponseWriter中
 		w.Header().Set("Content-Type", "text/xml")
+		addDateHeader(w)
 		_, err := io.Copy(w, img_file)
 		img_file.Seek(0, io.SeekStart) // 文件指针回到文件开头的位置
 		if err != nil {
 			fmt.Printf("err when io.Copy: %v\n", err)
+		}
+	})
+
+	// 和缓存相关的一些功能
+	// 如果request header中存在If-Modified-Since或者If-None-Match，则返回304，否则返回200
+	mux.HandleFunc("/cache", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
+		if !ValidateMethod(w, r, http.MethodGet) {
+			return
+		}
+		// 获取header
+		json_bytes, err := GenerateJsonResponse(w, r)
+		if err != nil {
+			MakeServerInternalError(w)
+			return
+		}
+		// 没有
+		if r.Header.Get("If-Modified-Since") != "" || r.Header.Get("If-None-Match") != "" {
+			// 只要有这两个的其中一个，我们就返回304 Not Modified
+			w.WriteHeader(http.StatusNotModified)
+			// 根据HTTP的标准，304状态码是不允许有response body的，所以如果在304作为返回状态码的情况下，
+			// 调用w.Write()是不会成功的
+			return 
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(json_bytes)
+		// 查看w真正的类型: *http.response，是一个内部的结构体
+	})
+
+	// 请求服务器设置一个cache-control， 其max-age为n
+	mux.HandleFunc("/cache/", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
+		if !ValidateMethod(w, r, http.MethodGet) {
+			return
+		}
+		// 获取参数
+		queries := r.URL.String()
+		unescaped_q, _ := url.QueryUnescape(queries)
+		param := unescaped_q[7:]
+		n, err := strconv.Atoi(param)
+		// 不能转化成数字，直接返回错误
+		if err != nil {
+			addDateHeader(w)
+			w.Write([]byte("<h1>接口参数非法，正确格式为：/cache/n, 其中n必须为数字</h1>"))
+			return
+		}
+		// 设置cache-control响应头给客户端
+		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", n))
+		// 编辑content
+		json_bytes, err := GenerateJsonResponse(w, r)
+		if err != nil {
+			MakeServerInternalError(w)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(json_bytes)
+	})
+
+	// 模拟一个响应的资源存在其etag
+	mux.HandleFunc("/etag/", func(w http.ResponseWriter, r *http.Request) {
+		addHeaderServer(w)
+		if !ValidateMethod(w, r, http.MethodGet) {
+			return
+		}
+		// 获取参数
+		queries := r.URL.String()
+		unescaped_q, _ := url.QueryUnescape(queries)
+		etagFromQuery := unescaped_q[6:]
+		if len(etagFromQuery) == 0 {
+			addDateHeader(w)
+			w.Write([]byte("<h1>接口参数非法：正确格式为 /etag/xxxxx, xxxxx为请求设置的etag值"))
+			return
+		}
+		ifNoneMatchEtag := r.Header.Get("If-None-Match")
+		if ifNoneMatchEtag == "" {
+			// 返回200
+			// 设置etag返回给客户端
+			json_bytes, err := GenerateJsonResponse(w, r)
+			if err != nil {
+				MakeServerInternalError(w)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("ETag", etagFromQuery)
+			w.Write(json_bytes)
+			return
+		} else {
+			// 检查请求的etag和ifnonematch的etag是否相同
+			if etagFromQuery == ifNoneMatchEtag {
+				// 相同就返回304
+				w.WriteHeader(http.StatusNotModified)
+			} else {
+				w.WriteHeader(http.StatusNoContent)
+			}
 		}
 	})
 

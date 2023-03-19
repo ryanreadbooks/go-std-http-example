@@ -73,3 +73,13 @@
 | /gzip    | GET  | 返回content-encoding为gzip的响应结果    |
 | /html    | GET  | 返回html格式的响应                     |
 | /xml     | GET  | 返回xml格式的响应                      |
+
+## Caches
+
+> 模拟缓存的一些操作
+
+| API          | 请求方法 | 功能                                                              | 示例                |
+| ------------ | ---- | --------------------------------------------------------------- | ----------------- |
+| /cache       | GET  | 如果请求头中带有If-Modified-Since或If-None-Match，则返回304；否则就是和/get接口一样的结果 | /cache            |
+| /cache/{n}   | GET  | 请求服务器在响应头中添加cache-control，其max-age=n                            | /cache/60         |
+| /etag/{etag} | GET  | 请求服务器在响应头中添加ETag，值为设置的{etag}                                    | /etag/coffeemaker |
