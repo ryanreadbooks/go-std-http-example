@@ -83,3 +83,11 @@
 | /cache       | GET  | 如果请求头中带有If-Modified-Since或If-None-Match，则返回304；否则就是和/get接口一样的结果 | /cache            |
 | /cache/{n}   | GET  | 请求服务器在响应头中添加cache-control，其max-age=n                            | /cache/60         |
 | /etag/{etag} | GET  | 请求服务器在响应头中添加ETag，值为设置的{etag}                                    | /etag/coffeemaker |
+
+## Authorization
+
+> HTTP基础的认证功能
+
+| API                         | 请求方法 | 功能                  | 示例                      |
+| --------------------------- | ---- | ------------------- | ----------------------- |
+| /basic-auth/username/passwd | GET  | 提示用户要进行HTTP Basic认证 | /basic-auth/ryan/123456 |
