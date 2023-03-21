@@ -75,6 +75,12 @@ func http_server() {
 	// /basic-auth/name/passwd
 	mux.Handle("/basic-auth/", &BasicAuthHandler{})
 
+	// 文件
+	// 这个接口返回单独一个文件
+	mux.Handle("/text", &ServeTxtFile{})
+	// 这个接口返回一个文件夹里面的内容，注意，如果要是返回文件夹的话，路由中必须以'/'结尾，否则会找不到资源从而返回404
+	mux.Handle("/folder/", &ServeFolder{})
+
 	// 开始监听
 	err := http.ListenAndServe("127.0.0.1:8080", mux)
 	if err != nil {

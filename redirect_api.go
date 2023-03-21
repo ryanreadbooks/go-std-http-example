@@ -24,12 +24,16 @@ func (r *RedirectHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if num == 0 {
-		w.Header().Add("Location", "/get")
-		w.WriteHeader(http.StatusFound)
+		// w.Header().Add("Location", "/get")
+		// w.WriteHeader(http.StatusFound)
+		// http库中也是提供了重定向的函数给用户方便使用
+		http.Redirect(w, req, "/get", http.StatusFound)
 	} else {
 		re_loc := fmt.Sprintf("/absolute-redirect?n=%d", num-1)
-		w.Header().Add("Location", re_loc)
-		w.WriteHeader(http.StatusFound)
+		// w.Header().Add("Location", re_loc)
+		// w.WriteHeader(http.StatusFound)
+		// 用http自带的重定向函数来进行重定向
+		http.Redirect(w, req, re_loc, http.StatusFound)
 	}
 	addDateHeader(w)
 }

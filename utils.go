@@ -21,14 +21,16 @@ func addDateHeader(w http.ResponseWriter) {
 
 func MakeServerInternalError(writer http.ResponseWriter) {
 	addDateHeader(writer)
-	writer.WriteHeader(http.StatusInternalServerError)
-	writer.Write([]byte("Server Internal Error"))
+	http.Error(writer, "Server Internal Error", http.StatusInternalServerError) // 用http包自带的函数来返回错误，在这个函数里面帮你组织好了各种信息
+	// writer.WriteHeader(http.StatusInternalServerError)
+	// writer.Write([]byte("Server Internal Error"))
 }
 
 func MethodNotAllowed(writer http.ResponseWriter) {
 	addDateHeader(writer)
-	writer.WriteHeader(http.StatusMethodNotAllowed)
-	writer.Write([]byte("<h1>Method Not Allowed</h1>"))
+	http.Error(writer, "Method Not Allowed", http.StatusMethodNotAllowed)
+	// writer.WriteHeader(http.StatusMethodNotAllowed)
+	// writer.Write([]byte("<h1>Method Not Allowed</h1>"))
 }
 
 // 验证请求方式是否为允许的方法
