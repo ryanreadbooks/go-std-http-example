@@ -2,15 +2,20 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"path"
+	"runtime"
+	"strings"
 )
 
 // 缓存打开的文件
 var openedFiles map[string]*os.File = make(map[string]*os.File)
 
-func http_server() {
+func http_server(host string, port uint, tls bool) {
 	defer func() {
 		if len(openedFiles) != 0 {
 			for _, v := range openedFiles {
@@ -81,10 +86,35 @@ func http_server() {
 	// 这个接口返回一个文件夹里面的内容，注意，如果要是返回文件夹的话，路由中必须以'/'结尾，否则会找不到资源从而返回404
 	mux.Handle("/folder/", &ServeFolder{})
 
+	addr := fmt.Sprintf("%s:%d", host, port)
+
+	var err error
 	// 开始监听
-	err := http.ListenAndServe("127.0.0.1:8080", mux)
+	if tls {
+		// 提供https服务
+		// 使用go自带的在crypto/tls中的genereate_cert.go函数生成cert.pem和key.pem两个文件
+		if !CheckFileExists("cert.pem") || !CheckFileExists("key.pem") {
+			fmt.Println("generating cert file")
+			goRoot := runtime.GOROOT()
+			scriptPath := path.Join(goRoot, "src", "crypto", "tls", "generate_cert.go")
+			// 运行scriptPath生成两个文件
+			// 无法校验颁发机构，，浏览器提示不安全。
+			// 浏览器只认CA颁发的证书
+			cmd := exec.Command("go", "run", scriptPath, "-host", host, "-ca", "true")
+			// 将标准输出重定向
+			var out strings.Builder
+			cmd.Stdout = &out
+			err = cmd.Run()
+			if err != nil {
+				panic(err)
+			}
+		}
+		fmt.Println("tls enabled")
+		err = http.ListenAndServeTLS(addr, "cert.pem", "key.pem", mux)
+	} else {
+		err = http.ListenAndServe(addr, mux)
+	}
 	if err != nil {
 		log.Fatalf("Fatal err: %v\n", err)
 	}
-
 }

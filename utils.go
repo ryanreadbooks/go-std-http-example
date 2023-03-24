@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"os"
 )
 
 // 获取当前的GMT时区的时间（好像就是UTC时间）
@@ -42,3 +43,7 @@ func ValidateMethod(writer http.ResponseWriter, req *http.Request, allow string)
 	return true
 }
 
+func CheckFileExists(name string) bool {
+	_, err := os.Stat(name)
+	return !os.IsNotExist(err)
+}
