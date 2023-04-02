@@ -15,7 +15,7 @@ func (e *EchoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !ValidateMethod(w, r, http.MethodGet) {
 		return
 	}
-	urlRaw := r.URL.String()
+	urlRaw := r.URL.Path
 	data := urlRaw[6:]
 	fmt.Printf("data=%v\n", data)
 	// 这里可能需要将url进行escape处理
