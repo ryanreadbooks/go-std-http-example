@@ -86,6 +86,9 @@ func http_server(host string, port uint, tls bool) {
 	// 这个接口返回一个文件夹里面的内容，注意，如果要是返回文件夹的话，路由中必须以'/'结尾，否则会找不到资源从而返回404
 	mux.Handle("/folder/", &ServeFolder{})
 
+	// 返回一个视频
+	mux.Handle("/mp4", &ServeVideoHandle{})
+
 	addr := fmt.Sprintf("%s:%d", host, port)
 
 	var err error
